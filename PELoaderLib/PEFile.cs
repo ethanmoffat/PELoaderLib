@@ -5,9 +5,10 @@ using System.IO.MemoryMappedFiles;
 
 namespace PELoaderLib
 {
-	//Much of this file was ported to C# from examples at 
-	//	This specification is for a version of Windows from 1993 (Windows NT 3.1).
+	//Much of this file was ported to C# from examples at:
 	//	http://www.csn.ul.ie/~caolan/publink/winresdump/winresdump/doc/pefile.html
+	//This specification is for a version of Windows from 1993 (Windows NT 3.1).
+	//Doesn't seem like much has changed since then though, since everything seems to work!
 
 	public class PEFile : IPEFile
 	{
@@ -23,12 +24,14 @@ namespace PELoaderLib
 		private MemoryMappedFile _file;
 		private MemoryMappedViewStream _fileStream;
 		private readonly List<ImageSectionHeader> _sectionHeaders;
+		private readonly Dictionary<DataDirectoryEntry, ImageSectionHeader> _sectionMap;
 
 		public PEFile(string filename)
 		{
 			FileName = filename;
 			CreateFileStreams();
 			_sectionHeaders = new List<ImageSectionHeader>();
+			_sectionMap = new Dictionary<DataDirectoryEntry, ImageSectionHeader>();
 		}
 
 		public void Initialize()
@@ -40,6 +43,7 @@ namespace PELoaderLib
 			Initialized = false;
 			_fileStream.Seek(0, SeekOrigin.Begin);
 			_sectionHeaders.Clear();
+			_sectionMap.Clear();
 
 			DOSHeader = GetImageDOSHeader();
 			if (DOSHeader.e_magic != ImageDOSHeader.DOS_MAGIC_NUMBER)
@@ -50,6 +54,7 @@ namespace PELoaderLib
 			OptionalHeader = GetOptionalFileHeader();
 
 			LoadSectionHeaders();
+			MapDirectoryEntriesToSectionHeaders();
 
 			Initialized = true;
 		}
@@ -59,9 +64,11 @@ namespace PELoaderLib
 			if (!Initialized)
 				throw new InvalidOperationException("The PE File must be initialized first");
 
-			var offset = GetOffsetForSectionFromDirectoryEntry(DataDirectoryEntry.Resource);
-			return GetBitmapResource(offset, intResource);
+			var bytes = GetBitmapResourceByID(intResource);
+			return PrependBitmapFileHeaderToResourceBytes(bytes);
 		}
+
+		#region Initialize Helpers
 
 		private void CreateFileStreams()
 		{
@@ -71,8 +78,6 @@ namespace PELoaderLib
 			_file = MemoryMappedFile.CreateFromFile(FileName);
 			_fileStream = _file.CreateViewStream();
 		}
-
-		#region Load Helpers
 
 		private ImageDOSHeader GetImageDOSHeader()
 		{
@@ -131,7 +136,26 @@ namespace PELoaderLib
 			}
 		}
 
-		private uint GetOffsetForSectionFromDirectoryEntry(DataDirectoryEntry entry)
+		private void MapDirectoryEntriesToSectionHeaders()
+		{
+			var directoryEntryTypes = (DataDirectoryEntry[])Enum.GetValues(typeof (DataDirectoryEntry));
+			foreach (var type in directoryEntryTypes)
+			{
+				ImageSectionHeader section;
+				try
+				{
+					section = GetSectionHeaderFromDirectoryEntry(type);
+				}
+				catch (KeyNotFoundException)
+				{
+					continue;
+				}
+
+				_sectionMap.Add(type, section);
+			}
+		}
+
+		private ImageSectionHeader GetSectionHeaderFromDirectoryEntry(DataDirectoryEntry entry)
 		{
 			var directoryEntry = OptionalHeader.DataDirectory[(int) entry];
 
@@ -140,68 +164,124 @@ namespace PELoaderLib
 				if (sectionHeader.VirtualAddress <= directoryEntry.VirtualAddress &&
 					sectionHeader.VirtualAddress + sectionHeader.SizeOfRawData > directoryEntry.VirtualAddress)
 				{
-					return sectionHeader.PointerToRawData;
+					return sectionHeader;
 				}
 			}
 
 			throw new KeyNotFoundException("The directory entry is not present in the section header table");
 		}
 
-		private byte[] GetBitmapResource(uint offsetIntoFile, int resourceID)
+		#endregion
+
+		#region Resource Helpers
+
+		private byte[] PrependBitmapFileHeaderToResourceBytes(byte[] array)
 		{
-			_fileStream.Seek((int)offsetIntoFile, SeekOrigin.Begin);
+			var totalFileSize = (uint)(array.Length + BitmapFileHeader.BMP_FILE_HEADER_SIZE);
+			var retArray = new byte[totalFileSize];
 
-			var resourceInfo = new byte[ResourceDirectory.RESOURCE_DIRECTORY_SIZE];
-			_fileStream.Read(resourceInfo, 0, resourceInfo.Length);
-			var resourceTableHeader = ResourceDirectory.CreateFromBytes(resourceInfo);
+			new BitmapFileHeader(totalFileSize).ToByteArray().CopyTo(retArray, 0);
+			array.CopyTo(retArray, BitmapFileHeader.BMP_FILE_HEADER_SIZE);
 
-			var startOfResourceSection = offsetIntoFile + ResourceDirectory.RESOURCE_DIRECTORY_SIZE;
+			return retArray;
+		}
+
+		private byte[] GetBitmapResourceByID(int resourceID)
+		{
+			var resourceSectionHeader = _sectionMap[DataDirectoryEntry.Resource];
+
+			SetStreamToStartOfResourceSection(resourceSectionHeader);
+			var resourceTableHeader = GetResourceDirectoryHeaderTable();
+
+			//skip over named entries in resource section (since this is explicitly by resource ID)
+			for (int i = 0; i < resourceTableHeader.NumberOfNamedEntries; ++i)
+			{
+				GetResourceDirectoryEntryAtCurrentFilePosition();
+			}
+
+
 			for (int i = 0; i < resourceTableHeader.NumberOfIdEntries; ++i)
 			{
 				var level1Entry = GetResourceDirectoryEntryAtCurrentFilePosition();
 				if (level1Entry.NameAsResourceType == ResourceType.Bitmap)
-				{
-					_fileStream.Seek(startOfResourceSection + (level1Entry.OffsetToData & 0x7FFFFFFF), SeekOrigin.Begin);
-
-					ResourceDirectoryEntry level2Entry;
-					do
-					{
-						level2Entry = GetResourceDirectoryEntryAtCurrentFilePosition();
-						if (level2Entry.Name == resourceID)
-						{
-							_fileStream.Seek(startOfResourceSection + (level2Entry.OffsetToData & 0x7FFFFFFF), SeekOrigin.Begin);
-							var level3Entry = GetResourceDirectoryEntryAtCurrentFilePosition();
-
-							_fileStream.Seek(offsetIntoFile + (level3Entry.OffsetToData & 0x7FFFFFFF), SeekOrigin.Begin);
-							var resourceDataEntry = GetResourceDataEntryAtCurrentFilePosition();
-
-							_fileStream.Seek(offsetIntoFile + resourceDataEntry.OffsetToData - 0xF000, SeekOrigin.Begin);
-							var bytes = new byte[resourceDataEntry.Size];
-							_fileStream.Read(bytes, 0, bytes.Length);
-							return bytes;
-						}
-					} while (level2Entry.Name != 0);
-
-					break;
-				}
+					return FindMatchingLevel2ResourceEntry(level1Entry, resourceID);
 			}
 
 			return new byte[0];
 		}
 
-		private ResourceDirectoryEntry GetResourceDirectoryEntryAtCurrentFilePosition()
+		private byte[] FindMatchingLevel2ResourceEntry(ResourceDirectoryEntry level1Entry, int resourceID)
 		{
-			var entryArray = new byte[ResourceDirectoryEntry.ENTRY_SIZE];
-			_fileStream.Read(entryArray, 0, entryArray.Length);
-			return new ResourceDirectoryEntry(BitConverter.ToUInt32(entryArray, 0),
-											  BitConverter.ToUInt32(entryArray, 4));
+			var resourceSectionHeader = _sectionMap[DataDirectoryEntry.Resource];
+			var resourceSectionFileOffset = resourceSectionHeader.PointerToRawData;
+			var resourceDirectoryFileOffset = resourceSectionFileOffset + ResourceDirectory.RESOURCE_DIRECTORY_SIZE;
+
+			_fileStream.Seek(resourceDirectoryFileOffset + (level1Entry.OffsetToData & 0x7FFFFFFF), SeekOrigin.Begin);
+
+			ResourceDirectoryEntry level2Entry;
+			do
+			{
+				level2Entry = GetResourceDirectoryEntryAtCurrentFilePosition();
+				if (level2Entry.Name == resourceID)
+				{
+					return GetResourceDataForCulture(level2Entry, 0);
+				}
+			} while (level2Entry.Name != 0);
+
+			return new byte[0];
 		}
 
-		private ResourceDataEntry GetResourceDataEntryAtCurrentFilePosition()
+		private byte[] GetResourceDataForCulture(ResourceDirectoryEntry level2Entry, uint cultureID)
 		{
-			var entryArray = new byte[ResourceDataEntry.ENTRY_SIZE];
-			_fileStream.Read(entryArray, 0, entryArray.Length);
-			return ResourceDataEntry.CreateFromBytes(entryArray);
+			var resourceSectionHeader = _sectionMap[DataDirectoryEntry.Resource];
+			var resourceDirectoryFileOffset = resourceSectionHeader.PointerToRawData + ResourceDirectory.RESOURCE_DIRECTORY_SIZE;
+
+			_fileStream.Seek(resourceDirectoryFileOffset + (level2Entry.OffsetToData & 0x7FFFFFFF), SeekOrigin.Begin);
+
+			ResourceDirectoryEntry level3Entry;
+			do
+			{
+				level3Entry = GetResourceDirectoryEntryAtCurrentFilePosition();
+				if (level3Entry.Name == cultureID)
+				{
+					var resourceDataEntry = GetResourceDataEntryAtOffset(level3Entry.OffsetToData);
+					var bitmapDataOffset = resourceSectionHeader.PointerToRawData + resourceDataEntry.OffsetToData - resourceSectionHeader.VirtualAddress;
+
+					_fileStream.Seek(bitmapDataOffset, SeekOrigin.Begin);
+					var bytes = new byte[resourceDataEntry.Size];
+					_fileStream.Read(bytes, 0, bytes.Length);
+
+					return bytes;
+				}
+			} while (level3Entry.Name != 0);
+
+			return new byte[0];
+		}
+
+		private ResourceDirectory GetResourceDirectoryHeaderTable()
+		{
+			var resourceInfo = new byte[ResourceDirectory.RESOURCE_DIRECTORY_SIZE];
+			_fileStream.Read(resourceInfo, 0, resourceInfo.Length);
+			var resourceTableHeader = ResourceDirectory.CreateFromBytes(resourceInfo);
+			return resourceTableHeader;
+		}
+
+		private ResourceDirectoryEntry GetResourceDirectoryEntryAtCurrentFilePosition()
+		{
+			var directoryEntryArray = new byte[ResourceDirectoryEntry.ENTRY_SIZE];
+			_fileStream.Read(directoryEntryArray, 0, directoryEntryArray.Length);
+			return new ResourceDirectoryEntry(BitConverter.ToUInt32(directoryEntryArray, 0),
+											  BitConverter.ToUInt32(directoryEntryArray, 4));
+		}
+
+		private ResourceDataEntry GetResourceDataEntryAtOffset(uint offset)
+		{
+			var resourceSectionFileOffset = _sectionMap[DataDirectoryEntry.Resource].PointerToRawData;
+			_fileStream.Seek(resourceSectionFileOffset + offset, SeekOrigin.Begin);
+
+			var dataEntryArray = new byte[ResourceDataEntry.ENTRY_SIZE];
+			_fileStream.Read(dataEntryArray, 0, dataEntryArray.Length);
+			return ResourceDataEntry.CreateFromBytes(dataEntryArray);
 		}
 
 		#endregion
@@ -229,6 +309,11 @@ namespace PELoaderLib
 		{
 			SetStreamToStartOfOptionalFileHeader();
 			_fileStream.Seek(OptionalFileHeader.OPTIONAL_FILE_HEADER_SIZE, SeekOrigin.Current);
+		}
+
+		private void SetStreamToStartOfResourceSection(ImageSectionHeader resourceHeader)
+		{
+			_fileStream.Seek((int)resourceHeader.PointerToRawData, SeekOrigin.Begin);
 		}
 
 		#endregion

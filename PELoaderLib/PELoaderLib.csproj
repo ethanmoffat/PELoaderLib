@@ -39,6 +39,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BitmapFileHeader.cs" />
     <Compile Include="DataDirectoryEntry.cs" />
     <Compile Include="ImageDataDirectory.cs" />
     <Compile Include="ImageFileHeader.cs" />
