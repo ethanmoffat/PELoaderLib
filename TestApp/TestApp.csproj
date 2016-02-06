@@ -4,15 +4,16 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{4611FC93-6E42-41ED-BE11-E67BB93D0656}</ProjectGuid>
-    <OutputType>Library</OutputType>
+    <ProjectGuid>{382F56C8-223E-479A-9592-B5DFE550AAB6}</ProjectGuid>
+    <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>PELoaderLib</RootNamespace>
-    <AssemblyName>PELoaderLib</AssemblyName>
+    <RootNamespace>TestApp</RootNamespace>
+    <AssemblyName>TestApp</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -22,6 +23,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
@@ -32,6 +34,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -39,20 +42,17 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="DataDirectoryEntry.cs" />
-    <Compile Include="ImageDataDirectory.cs" />
-    <Compile Include="ImageFileHeader.cs" />
-    <Compile Include="ImageHeaderType.cs" />
-    <Compile Include="ResourceDataEntry.cs" />
-    <Compile Include="ResourceDirectory.cs" />
-    <Compile Include="ResourceDirectoryEntry.cs" />
-    <Compile Include="ImageSectionHeader.cs" />
-    <Compile Include="IPEFile.cs" />
-    <Compile Include="OptionalFileHeader.cs" />
-    <Compile Include="PEFile.cs" />
-    <Compile Include="ImageDOSHeader.cs" />
+    <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ResourceType.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PELoaderLib\PELoaderLib.csproj">
+      <Project>{4611fc93-6e42-41ed-be11-e67bb93d0656}</Project>
+      <Name>PELoaderLib</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

@@ -5,6 +5,8 @@ VisualStudioVersion = 12.0.40629.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PELoaderLib", "PELoaderLib\PELoaderLib.csproj", "{4611FC93-6E42-41ED-BE11-E67BB93D0656}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestApp", "TestApp\TestApp.csproj", "{382F56C8-223E-479A-9592-B5DFE550AAB6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{4611FC93-6E42-41ED-BE11-E67BB93D0656}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4611FC93-6E42-41ED-BE11-E67BB93D0656}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4611FC93-6E42-41ED-BE11-E67BB93D0656}.Release|Any CPU.Build.0 = Release|Any CPU
+		{382F56C8-223E-479A-9592-B5DFE550AAB6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{382F56C8-223E-479A-9592-B5DFE550AAB6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{382F56C8-223E-479A-9592-B5DFE550AAB6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{382F56C8-223E-479A-9592-B5DFE550AAB6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
