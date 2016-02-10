@@ -59,12 +59,16 @@ namespace PELoaderLib
 			Initialized = true;
 		}
 
-		public byte[] GetEmbeddedBitmapResourceByID(int intResource)
+		public byte[] GetEmbeddedBitmapResourceByID(int intResource, int cultureID = 0)
 		{
 			if (!Initialized)
 				throw new InvalidOperationException("The PE File must be initialized first");
 
-			var bytes = GetBitmapResourceByID(intResource);
+			var bytes = GetBitmapResourceByID(intResource, cultureID);
+
+			if (bytes == null || bytes.Length == 0)
+				throw new ArgumentException(string.Format("Error loading the resource: could not find the specified resource for ID {0} and Culture {1}", intResource, cultureID));
+
 			return PrependBitmapFileHeaderToResourceBytes(bytes);
 		}
 
@@ -186,7 +190,7 @@ namespace PELoaderLib
 			return retArray;
 		}
 
-		private byte[] GetBitmapResourceByID(int resourceID)
+		private byte[] GetBitmapResourceByID(int resourceID, int cultureID)
 		{
 			var resourceSectionHeader = _sectionMap[DataDirectoryEntry.Resource];
 
@@ -204,13 +208,13 @@ namespace PELoaderLib
 			{
 				var level1Entry = GetResourceDirectoryEntryAtCurrentFilePosition();
 				if (level1Entry.NameAsResourceType == ResourceType.Bitmap)
-					return FindMatchingLevel2ResourceEntry(level1Entry, resourceID);
+					return FindMatchingLevel2ResourceEntry(level1Entry, resourceID, cultureID);
 			}
 
 			return new byte[0];
 		}
 
-		private byte[] FindMatchingLevel2ResourceEntry(ResourceDirectoryEntry level1Entry, int resourceID)
+		private byte[] FindMatchingLevel2ResourceEntry(ResourceDirectoryEntry level1Entry, int resourceID, int cultureID)
 		{
 			var resourceSectionHeader = _sectionMap[DataDirectoryEntry.Resource];
 			var resourceSectionFileOffset = resourceSectionHeader.PointerToRawData;
@@ -224,14 +228,14 @@ namespace PELoaderLib
 				level2Entry = GetResourceDirectoryEntryAtCurrentFilePosition();
 				if (level2Entry.Name == resourceID)
 				{
-					return GetResourceDataForCulture(level2Entry, 0);
+					return GetResourceDataForCulture(level2Entry, cultureID);
 				}
 			} while (level2Entry.Name != 0);
 
 			return new byte[0];
 		}
 
-		private byte[] GetResourceDataForCulture(ResourceDirectoryEntry level2Entry, uint cultureID)
+		private byte[] GetResourceDataForCulture(ResourceDirectoryEntry level2Entry, int cultureID)
 		{
 			var resourceSectionHeader = _sectionMap[DataDirectoryEntry.Resource];
 			var resourceDirectoryFileOffset = resourceSectionHeader.PointerToRawData + ResourceDirectory.RESOURCE_DIRECTORY_SIZE;
