@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{27B8D620-2EFF-457C-9792-382DC5052FB3}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>PELoaderLib</RootNamespace>
+    <AssemblyName>PELoaderLib.Linux</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug</OutputPath>
+    <DefineConstants>DEBUG;MONO;LINUX;</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <ConsolePause>false</ConsolePause>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release</OutputPath>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <ConsolePause>false</ConsolePause>
+    <DefineConstants>MONO;LINUX;</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="..\PELoaderLib\BitmapFileHeader.cs">
+      <Link>BitmapFileHeader.cs</Link>
+    </Compile>
+    <Compile Include="..\PELoaderLib\DataDirectoryEntry.cs">
+      <Link>DataDirectoryEntry.cs</Link>
+    </Compile>
+    <Compile Include="..\PELoaderLib\IPEFile.cs">
+      <Link>IPEFile.cs</Link>
+    </Compile>
+    <Compile Include="..\PELoaderLib\ImageDOSHeader.cs">
+      <Link>ImageDOSHeader.cs</Link>
+    </Compile>
+    <Compile Include="..\PELoaderLib\ImageDataDirectory.cs">
+      <Link>ImageDataDirectory.cs</Link>
+    </Compile>
+    <Compile Include="..\PELoaderLib\ImageFileHeader.cs">
+      <Link>ImageFileHeader.cs</Link>
+    </Compile>
+    <Compile Include="..\PELoaderLib\ImageHeaderType.cs">
+      <Link>ImageHeaderType.cs</Link>
+    </Compile>
+    <Compile Include="..\PELoaderLib\ImageSectionHeader.cs">
+      <Link>ImageSectionHeader.cs</Link>
+    </Compile>
+    <Compile Include="..\PELoaderLib\OptionalFileHeader.cs">
+      <Link>OptionalFileHeader.cs</Link>
+    </Compile>
+    <Compile Include="..\PELoaderLib\PEFile.cs">
+      <Link>PEFile.cs</Link>
+    </Compile>
+    <Compile Include="..\PELoaderLib\ResourceDataEntry.cs">
+      <Link>ResourceDataEntry.cs</Link>
+    </Compile>
+    <Compile Include="..\PELoaderLib\ResourceDirectory.cs">
+      <Link>ResourceDirectory.cs</Link>
+    </Compile>
+    <Compile Include="..\PELoaderLib\ResourceDirectoryEntry.cs">
+      <Link>ResourceDirectoryEntry.cs</Link>
+    </Compile>
+    <Compile Include="..\PELoaderLib\ResourceType.cs">
+      <Link>ResourceType.cs</Link>
+    </Compile>
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+</Project>
