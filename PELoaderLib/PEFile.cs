@@ -146,20 +146,14 @@ namespace PELoaderLib
 			foreach (var type in directoryEntryTypes)
 			{
 				ImageSectionHeader section;
-				try
-				{
-					section = GetSectionHeaderFromDirectoryEntry(type);
-				}
-				catch (KeyNotFoundException)
-				{
+				if (!TryGetSectionHeaderFromDirectoryEntry(type, out section))
 					continue;
-				}
 
 				_sectionMap.Add(type, section);
 			}
 		}
 
-		private ImageSectionHeader GetSectionHeaderFromDirectoryEntry(DataDirectoryEntry entry)
+		private bool TryGetSectionHeaderFromDirectoryEntry(DataDirectoryEntry entry, out ImageSectionHeader retSectionHeader)
 		{
 			var directoryEntry = OptionalHeader.DataDirectory[(int) entry];
 
@@ -168,11 +162,13 @@ namespace PELoaderLib
 				if (sectionHeader.VirtualAddress <= directoryEntry.VirtualAddress &&
 					sectionHeader.VirtualAddress + sectionHeader.SizeOfRawData > directoryEntry.VirtualAddress)
 				{
-					return sectionHeader;
+					retSectionHeader = sectionHeader;
+					return true;
 				}
 			}
 
-			throw new KeyNotFoundException("The directory entry is not present in the section header table");
+			retSectionHeader = new ImageSectionHeader();
+			return false;
 		}
 
 		#endregion
