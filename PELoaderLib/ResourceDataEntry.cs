@@ -8,16 +8,16 @@ using System;
 
 namespace PELoaderLib
 {
-    public struct ResourceDataEntry
+    internal struct ResourceDataEntry
     {
-        public const int ENTRY_SIZE = 16;
+        internal const int ENTRY_SIZE = 16;
 
-        public uint OffsetToData { get; private set; }
-        public uint Size { get; private set; }
-        public uint CodePage { get; private set; }
-        public uint Reserved { get; private set; }
+        internal uint OffsetToData { get; private set; }
+        internal uint Size { get; private set; }
+        internal uint CodePage { get; private set; }
+        internal uint Reserved { get; private set; }
 
-        public static ResourceDataEntry CreateFromBytes(byte[] array)
+        internal static ResourceDataEntry CreateFromBytes(byte[] array)
         {
             if (array.Length != ENTRY_SIZE)
                 throw new ArgumentException("Array is not the correct size", "array");

@@ -4,17 +4,18 @@
 
 namespace PELoaderLib
 {
-    public struct ResourceDirectoryEntry
+    internal struct ResourceDirectoryEntry
     {
-        public const int ENTRY_SIZE = 8;
+        internal const int ENTRY_SIZE = 8;
 
-        public uint Name { get; private set; }
+        internal uint Name { get; private set; }
 
-        public ResourceType NameAsResourceType { get { return (ResourceType) Name; } }
-        
-        public uint OffsetToData { get; private set; }
+        internal ResourceType NameAsResourceType { get { return (ResourceType)Name; } }
 
-        public ResourceDirectoryEntry(uint name, uint offsetToSibling) : this()
+        internal uint OffsetToData { get; private set; }
+
+        internal ResourceDirectoryEntry(uint name, uint offsetToSibling)
+            : this()
         {
             Name = name;
             OffsetToData = offsetToSibling;

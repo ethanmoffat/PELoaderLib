@@ -6,18 +6,18 @@ using System;
 
 namespace PELoaderLib
 {
-    public struct ResourceDirectory
+    internal struct ResourceDirectory
     {
-        public const int RESOURCE_DIRECTORY_SIZE = 16;
+        internal const int RESOURCE_DIRECTORY_SIZE = 16;
 
-        public uint  Characteristics { get; private set; }
-        public uint  TimeDateStamp { get; private set; }
-        public ushort MajorVersion { get; private set; }
-        public ushort MinorVersion { get; private set; }
-        public ushort NumberOfNamedEntries { get; private set; }
-        public ushort NumberOfIdEntries { get; private set; }
+        internal uint Characteristics { get; private set; }
+        internal uint TimeDateStamp { get; private set; }
+        internal ushort MajorVersion { get; private set; }
+        internal ushort MinorVersion { get; private set; }
+        internal ushort NumberOfNamedEntries { get; private set; }
+        internal ushort NumberOfIdEntries { get; private set; }
 
-        public static ResourceDirectory CreateFromBytes(byte[] array)
+        internal static ResourceDirectory CreateFromBytes(byte[] array)
         {
             if (array.Length != RESOURCE_DIRECTORY_SIZE)
                 throw new ArgumentException("Array is not the correct size", "array");

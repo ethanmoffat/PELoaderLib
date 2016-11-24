@@ -10,27 +10,27 @@ using System.Text;
 
 namespace PELoaderLib
 {
-    public struct ImageSectionHeader
+    internal struct ImageSectionHeader
     {
         private const int NAME_SIZE_IN_BYTES = 8;
-        public const int SECTION_HEADER_SIZE = 40;
+        internal const int SECTION_HEADER_SIZE = 40;
 
-        public string  Name { get; private set; }
+        internal string Name { get; private set; }
 
         private uint   _miscUnion;
-        public uint    PhysicalAddress { get { return _miscUnion; } }
-        public uint    VirtualSize { get { return _miscUnion; } }
+        internal uint PhysicalAddress { get { return _miscUnion; } }
+        internal uint VirtualSize { get { return _miscUnion; } }
 
-        public uint    VirtualAddress { get; private set; }
-        public uint    SizeOfRawData { get; private set; }
-        public uint    PointerToRawData { get; private set; }
-        public uint    PointerToRelocations { get; private set; }
-        public uint    PointerToLinenumbers { get; private set; }
-        public ushort  NumberOfRelocations { get; private set; }
-        public ushort  NumberOfLinenumbers { get; private set; }
-        public uint    Characteristics { get; private set; }
+        internal uint VirtualAddress { get; private set; }
+        internal uint SizeOfRawData { get; private set; }
+        internal uint PointerToRawData { get; private set; }
+        internal uint PointerToRelocations { get; private set; }
+        internal uint PointerToLinenumbers { get; private set; }
+        internal ushort NumberOfRelocations { get; private set; }
+        internal ushort NumberOfLinenumbers { get; private set; }
+        internal uint Characteristics { get; private set; }
 
-        public static ImageSectionHeader CreateFromBytes(byte[] array)
+        internal static ImageSectionHeader CreateFromBytes(byte[] array)
         {
             if (array.Length != SECTION_HEADER_SIZE)
                 throw new ArgumentException("Array is not the correct size", "array");

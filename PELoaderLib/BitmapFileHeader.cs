@@ -9,25 +9,25 @@ using System.Text;
 
 namespace PELoaderLib
 {
-    public struct BitmapFileHeader
+    internal struct BitmapFileHeader
     {
-        public const int BMP_FILE_HEADER_SIZE = 14;
-        public const int BMP_INFO_HEADER_SIZE = 40;
+        internal const int BMP_FILE_HEADER_SIZE = 14;
+        internal const int BMP_INFO_HEADER_SIZE = 40;
 
-        public short bfType { get; private set; }
-        public uint bfSize { get; private set; }
-        public short bfReserved1 { get; private set; }
-        public short bfReserved2 { get; private set; }
-        public uint bfOffBits { get { return BMP_FILE_HEADER_SIZE + BMP_INFO_HEADER_SIZE; } }
+        internal short bfType { get; private set; }
+        internal uint bfSize { get; private set; }
+        internal short bfReserved1 { get; private set; }
+        internal short bfReserved2 { get; private set; }
+        internal uint bfOffBits { get { return BMP_FILE_HEADER_SIZE + BMP_INFO_HEADER_SIZE; } }
 
-        public BitmapFileHeader(uint size)
+        internal BitmapFileHeader(uint size)
             : this()
         {
             bfType = MakeType();
             bfSize = size;
         }
 
-        public byte[] ToByteArray()
+        internal byte[] ToByteArray()
         {
             var bytes = new byte[BMP_FILE_HEADER_SIZE];
             BitConverter.GetBytes(bfType).CopyTo(bytes, 0);

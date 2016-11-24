@@ -4,7 +4,7 @@
 
 namespace PELoaderLib
 {
-    public enum DataDirectoryEntry
+    internal enum DataDirectoryEntry
     {
         Export     = 0,
         Import     = 1,
