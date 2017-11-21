@@ -8,11 +8,11 @@ namespace PELoaderLib
     {
         internal const int ENTRY_SIZE = 8;
 
-        internal uint Name { get; private set; }
+        internal uint Name { get; }
 
         internal ResourceType NameAsResourceType { get { return (ResourceType)Name; } }
 
-        internal uint OffsetToData { get; private set; }
+        internal uint OffsetToData { get; }
 
         internal ResourceDirectoryEntry(uint name, uint offsetToSibling)
             : this()

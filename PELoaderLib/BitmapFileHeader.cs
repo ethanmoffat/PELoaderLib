@@ -14,10 +14,10 @@ namespace PELoaderLib
         internal const int BMP_FILE_HEADER_SIZE = 14;
         internal const int BMP_INFO_HEADER_SIZE = 40;
 
-        internal short bfType { get; private set; }
-        internal uint bfSize { get; private set; }
-        internal short bfReserved1 { get; private set; }
-        internal short bfReserved2 { get; private set; }
+        internal short bfType { get; }
+        internal uint bfSize { get; }
+        internal short bfReserved1 { get; }
+        internal short bfReserved2 { get; }
         internal uint bfOffBits { get { return BMP_FILE_HEADER_SIZE + BMP_INFO_HEADER_SIZE; } }
 
         internal BitmapFileHeader(uint size)
