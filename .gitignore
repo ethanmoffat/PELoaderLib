@@ -214,8 +214,4 @@ $RECYCLE.BIN/
 *.msm
 *.msp
 
-# Ignore HotDog's client
-Endless Online V2/
-EndlessClient-Mono/Content/EndlessClient/
-state tree.txt
-/PELoaderLib.userprefs
+.vs/
