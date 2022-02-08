@@ -12,8 +12,8 @@
         <PackageTags>utility library PE binary resources windows cross-platform</PackageTags>
         <Copyright>Copyright © 2016-2022 Ethan Moffat</Copyright>
         <Description>Cross-platform file reader for windows Portable Executable file format.</Description>
-        <Version>1.1.0</Version>
-        <AssemblyVersion>1.1.0</AssemblyVersion>
-        <PackageVersion>1.1.0</PackageVersion>
+        <Version>1.1.1</Version>
+        <AssemblyVersion>1.1.1</AssemblyVersion>
+        <PackageVersion>1.1.1</PackageVersion>
     </PropertyGroup>
 </Project>

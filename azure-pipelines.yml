@@ -1,4 +1,4 @@
-name: 1.1.0.$(rev:rrr)
+name: 1.1.1.$(rev:rrr)
 
 trigger:
   branches:
@@ -24,6 +24,10 @@ steps:
     command: 'build'
     projects: '$(Bujild.SourcesDirectory)\PELoaderLib.sln'
     arguments: '--configuration $(buildConfiguration)'
+- task: CopyFiles@2
+  inputs:
+    SourceFolder: $(Build.SourcesDirectory)\PELoaderLib\PELoaderLib\bin\$(buildConfiguration)\**\*
+    TargetFolder: $(Build.ArtifactStagingDirectory)
 - task: PublishBuildArtifacts@1
   inputs:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
