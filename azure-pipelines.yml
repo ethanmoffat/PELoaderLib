@@ -34,7 +34,7 @@ steps:
     versioningScheme: byBuildNumber
 - task: CopyFiles@2
   inputs:
-    SourceFolder: $(Build.SourcesDirectory)\PELoaderLib\PELoaderLib\bin\$(buildConfiguration)\**\*
+    SourceFolder: $(Build.SourcesDirectory)\PELoaderLib\bin\$(buildConfiguration)
     TargetFolder: $(Build.ArtifactStagingDirectory)
 - task: PublishBuildArtifacts@1
   inputs:
