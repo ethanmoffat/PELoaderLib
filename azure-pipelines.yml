@@ -1,9 +1,7 @@
 name: 1.1.1.$(rev:rrr)
 
 trigger:
-  branches:
-    include:
-    - master
+- master
 
 schedules:
 - cron: 0 5 * * 6
