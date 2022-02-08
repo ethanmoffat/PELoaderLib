@@ -1,22 +1,25 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.40629.0
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.32112.339
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PELoaderLib", "PELoaderLib\PELoaderLib.csproj", "{4611FC93-6E42-41ED-BE11-E67BB93D0656}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|x86 = Debug|x86
-		Release|x86 = Release|x86
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{4611FC93-6E42-41ED-BE11-E67BB93D0656}.Debug|x86.ActiveCfg = Debug|x86
-		{4611FC93-6E42-41ED-BE11-E67BB93D0656}.Debug|x86.Build.0 = Debug|x86
-		{4611FC93-6E42-41ED-BE11-E67BB93D0656}.Release|x86.ActiveCfg = Release|x86
-		{4611FC93-6E42-41ED-BE11-E67BB93D0656}.Release|x86.Build.0 = Release|x86
+		{4611FC93-6E42-41ED-BE11-E67BB93D0656}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4611FC93-6E42-41ED-BE11-E67BB93D0656}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4611FC93-6E42-41ED-BE11-E67BB93D0656}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4611FC93-6E42-41ED-BE11-E67BB93D0656}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6A5A80C4-6C69-4DA3-AF70-3E37EE0C707D}
 	EndGlobalSection
 EndGlobal
