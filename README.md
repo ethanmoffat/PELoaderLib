@@ -6,7 +6,7 @@ Much of the implementation is based on the [description of the file format here]
 
 ## Build Status
 
-[![Build status](https://ethanmoffat.visualstudio.com/EndlessClient/_apis/build/status/PELoaderLib%20PR%20Gate)](https://ethanmoffat.visualstudio.com/EndlessClient/_build/latest?definitionId=3)
+[![Build Status](https://ethanmoffat.visualstudio.com/EndlessClient/_apis/build/status/PELoaderLib%20Build?branchName=master)](https://ethanmoffat.visualstudio.com/EndlessClient/_build/latest?definitionId=15&branchName=master)
 
 ## Usage
 

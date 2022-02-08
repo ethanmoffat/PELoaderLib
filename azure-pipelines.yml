@@ -1,0 +1,43 @@
+name: 1.1.1.$(rev:rrr)
+
+trigger:
+  branches:
+    include:
+    - master
+
+schedules:
+- cron: 0 5 * * 6
+  branches:
+    include:
+    - master
+  always: true
+
+pool:
+  vmImage: windows-latest
+
+variables:
+  buildConfiguration: 'Release'
+
+steps:
+- task: UseDotNet@2
+  inputs:
+    version: 6.0.x
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'restore'
+    projects: '$(Build.SourcesDirectory)\PELoaderLib.sln'
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'build'
+    projects: '$(Build.SourcesDirectory)\PELoaderLib.sln'
+    arguments: '--configuration $(buildConfiguration)'
+    versioningScheme: byBuildNumber
+- task: CopyFiles@2
+  inputs:
+    SourceFolder: $(Build.SourcesDirectory)\PELoaderLib\bin\$(buildConfiguration)
+    TargetFolder: $(Build.ArtifactStagingDirectory)
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
