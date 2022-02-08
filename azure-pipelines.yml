@@ -1,0 +1,31 @@
+name: 1.1.0.$(rev:rrr)
+
+trigger:
+  branches:
+    include:
+    - master
+
+schedules:
+- cron: 0 5 * * 6
+  branches:
+    include:
+    - master
+  always: true
+
+pool:
+  vmImage: windows-latest
+
+variables:
+  buildConfiguration: 'Release'
+
+steps:
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'build'
+    projects: '$(Bujild.SourcesDirectory)\PELoaderLib.sln'
+    arguments: '--configuration $(buildConfiguration)'
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
