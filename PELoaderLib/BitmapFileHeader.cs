@@ -9,22 +9,32 @@ using System.Text;
 
 namespace PELoaderLib
 {
+    public enum BitmapVersion
+    {
+        BitmapInfoHeader = BitmapFileHeader.BMP_INFO_HEADER_SIZE,
+        BitmapV3InfoHeader = BitmapFileHeader.BMP_INFO_HEADER_SIZE_V3
+    }
+
     internal struct BitmapFileHeader
     {
         internal const int BMP_FILE_HEADER_SIZE = 14;
         internal const int BMP_INFO_HEADER_SIZE = 40;
+        internal const int BMP_INFO_HEADER_SIZE_V3 = 56;
 
         internal short bfType { get; }
         internal uint bfSize { get; }
         internal short bfReserved1 { get; }
         internal short bfReserved2 { get; }
-        internal uint bfOffBits { get { return BMP_FILE_HEADER_SIZE + BMP_INFO_HEADER_SIZE; } }
+        internal uint bfOffBits { get { return BMP_FILE_HEADER_SIZE + (uint)Version; } }
+        internal BitmapVersion Version { get; }
 
-        internal BitmapFileHeader(uint size)
+        internal BitmapFileHeader(BitmapVersion version, uint size)
             : this()
         {
-            bfType = MakeType();
+            Version = version;
             bfSize = size;
+
+            bfType = MakeType();
         }
 
         internal byte[] ToByteArray()
