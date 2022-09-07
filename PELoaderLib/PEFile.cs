@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.MemoryMappedFiles;
+using System.Linq;
 
 namespace PELoaderLib
 {
@@ -75,7 +76,7 @@ namespace PELoaderLib
             Initialized = true;
         }
 
-        public byte[] GetEmbeddedBitmapResourceByID(int intResource, BitmapVersion version = BitmapVersion.BitmapInfoHeader, int cultureID = 0)
+        public byte[] GetEmbeddedBitmapResourceByID(int intResource, int cultureID = 0)
         {
             if (!Initialized)
                 throw new InvalidOperationException("The PE File must be initialized first");
@@ -85,7 +86,7 @@ namespace PELoaderLib
             if (bytes == null || bytes.Length == 0)
                 throw new ArgumentException(string.Format("Error loading the resource: could not find the specified resource for ID {0} and Culture {1}", intResource, cultureID));
 
-            return PrependBitmapFileHeaderToResourceBytes(version, bytes);
+            return PrependBitmapFileHeaderToResourceBytes(bytes);
         }
 
         #region Initialize Helpers
@@ -191,13 +192,18 @@ namespace PELoaderLib
 
         #region Resource Helpers
 
-        private byte[] PrependBitmapFileHeaderToResourceBytes(BitmapVersion version, byte[] array)
+        private byte[] PrependBitmapFileHeaderToResourceBytes(byte[] resourceBytes)
         {
-            var totalFileSize = (uint)(array.Length + BitmapFileHeader.BMP_FILE_HEADER_SIZE);
+            var totalFileSize = (uint)(resourceBytes.Length + BitmapFileHeader.BMP_FILE_HEADER_SIZE);
             var retArray = new byte[totalFileSize];
 
-            new BitmapFileHeader(version, totalFileSize).ToByteArray().CopyTo(retArray, 0);
-            array.CopyTo(retArray, BitmapFileHeader.BMP_FILE_HEADER_SIZE);
+            var headerSize = BitConverter.ToInt32(resourceBytes, 0);
+            var bitmapHeaderBytes = resourceBytes.Take(headerSize).ToArray();
+
+            var bitmapFileHeader = new BitmapFileHeader(totalFileSize, bitmapHeaderBytes);
+            bitmapFileHeader.ToByteArray().CopyTo(retArray, 0);
+
+            resourceBytes.CopyTo(retArray, BitmapFileHeader.BMP_FILE_HEADER_SIZE);
 
             return retArray;
         }
