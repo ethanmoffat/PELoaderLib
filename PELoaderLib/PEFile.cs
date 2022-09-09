@@ -33,7 +33,7 @@ namespace PELoaderLib
 
         private readonly Dictionary<ResourceType, ResourceDirectoryEntry> _levelOneCache;
         private readonly Dictionary<int, ResourceDirectoryEntry> _levelTwoCache;
-        private readonly Dictionary<int, Dictionary<int, ResourceDirectoryEntry>> _levelThreeCache;
+        private readonly Dictionary<int, List<(int CultureID, ResourceDirectoryEntry Entry)>> _levelThreeCache;
 
         public PEFile(string filename)
         {
@@ -43,7 +43,7 @@ namespace PELoaderLib
             _sectionMap = new Dictionary<DataDirectoryEntry, ImageSectionHeader>();
             _levelOneCache = new Dictionary<ResourceType, ResourceDirectoryEntry>();
             _levelTwoCache = new Dictionary<int, ResourceDirectoryEntry>();
-            _levelThreeCache = new Dictionary<int, Dictionary<int, ResourceDirectoryEntry>>();
+            _levelThreeCache = new Dictionary<int, List<(int, ResourceDirectoryEntry)>>();
         }
 
         public void Initialize()
@@ -76,7 +76,7 @@ namespace PELoaderLib
             Initialized = true;
         }
 
-        public byte[] GetEmbeddedBitmapResourceByID(int intResource, int cultureID = 0)
+        public byte[] GetEmbeddedBitmapResourceByID(int intResource, int cultureID = -1)
         {
             if (!Initialized)
                 throw new InvalidOperationException("The PE File must be initialized first");
@@ -258,9 +258,9 @@ namespace PELoaderLib
             {
                 level3Entry = GetResourceDirectoryEntryAtCurrentFilePosition();
                 if (!_levelThreeCache.ContainsKey((int)level2Entry.Name))
-                    _levelThreeCache.Add((int)level2Entry.Name, new Dictionary<int, ResourceDirectoryEntry>());
+                    _levelThreeCache.Add((int)level2Entry.Name, new List<(int, ResourceDirectoryEntry)>());
 
-                _levelThreeCache[(int)level2Entry.Name][(int)level3Entry.Name] = level3Entry;
+                _levelThreeCache[(int)level2Entry.Name].Add(((int)level3Entry.Name, level3Entry));
             } while (level3Entry.Name != 0);
         }
 
@@ -277,17 +277,22 @@ namespace PELoaderLib
             if (!_levelTwoCache.ContainsKey(resourceID))
                 return new byte[0];
 
-            return GetResourceDataForCulture(_levelTwoCache[resourceID], resourceID, cultureID);
+            return GetResourceDataForCulture(resourceID, cultureID);
         }
 
-        private byte[] GetResourceDataForCulture(ResourceDirectoryEntry level2Entry, int resourceID, int cultureID)
+        private byte[] GetResourceDataForCulture(int resourceID, int cultureID)
         {
             var resourceSectionHeader = _sectionMap[DataDirectoryEntry.Resource];
 
-            if (!_levelThreeCache.ContainsKey(resourceID) || !_levelThreeCache[resourceID].ContainsKey(cultureID))
+            if (!_levelThreeCache.ContainsKey(resourceID) || (cultureID >= 0 && !_levelThreeCache[resourceID].Any(x => x.CultureID == cultureID)))
                 return new byte[0];
 
-            var resourceDataEntry = GetResourceDataEntryAtOffset(_levelThreeCache[resourceID][cultureID].OffsetToData);
+            if (cultureID < 0)
+            {
+                cultureID = _levelThreeCache[resourceID].First().CultureID;
+            }
+
+            var resourceDataEntry = GetResourceDataEntryAtOffset(_levelThreeCache[resourceID].First(x => x.CultureID == cultureID).Entry.OffsetToData);
             var bitmapDataOffset = resourceSectionHeader.PointerToRawData + resourceDataEntry.OffsetToData - resourceSectionHeader.VirtualAddress;
 
             _fileStream.Seek(bitmapDataOffset, SeekOrigin.Begin);

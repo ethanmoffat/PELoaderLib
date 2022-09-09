@@ -18,6 +18,6 @@ namespace PELoaderLib
         OptionalFileHeader OptionalHeader { get; }
 
         void Initialize();
-        byte[] GetEmbeddedBitmapResourceByID(int intResource, int cultureID = 0);
+        byte[] GetEmbeddedBitmapResourceByID(int intResource, int cultureID = -1);
     }
 }
