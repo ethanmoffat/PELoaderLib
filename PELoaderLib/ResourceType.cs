@@ -4,7 +4,7 @@
 
 namespace PELoaderLib
 {
-    internal enum ResourceType : uint
+    public enum ResourceType : uint
     {
         Cursor = 1,
         Bitmap = 2,

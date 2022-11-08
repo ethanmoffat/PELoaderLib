@@ -32,8 +32,8 @@ namespace PELoaderLib
         private readonly Dictionary<DataDirectoryEntry, ImageSectionHeader> _sectionMap;
 
         private readonly Dictionary<ResourceType, ResourceDirectoryEntry> _levelOneCache;
-        private readonly Dictionary<int, ResourceDirectoryEntry> _levelTwoCache;
-        private readonly Dictionary<int, List<(int CultureID, ResourceDirectoryEntry Entry)>> _levelThreeCache;
+        private readonly Dictionary<ResourceType, Dictionary<int, ResourceDirectoryEntry>> _levelTwoCache;
+        private readonly Dictionary<ResourceType, Dictionary<int, List<(int CultureID, ResourceDirectoryEntry Entry)>>> _levelThreeCache;
 
         public PEFile(string filename)
         {
@@ -42,10 +42,11 @@ namespace PELoaderLib
             _sectionHeaders = new List<ImageSectionHeader>();
             _sectionMap = new Dictionary<DataDirectoryEntry, ImageSectionHeader>();
             _levelOneCache = new Dictionary<ResourceType, ResourceDirectoryEntry>();
-            _levelTwoCache = new Dictionary<int, ResourceDirectoryEntry>();
-            _levelThreeCache = new Dictionary<int, List<(int, ResourceDirectoryEntry)>>();
+            _levelTwoCache = new Dictionary<ResourceType, Dictionary<int, ResourceDirectoryEntry>>();
+            _levelThreeCache = new Dictionary<ResourceType, Dictionary<int, List<(int, ResourceDirectoryEntry)>>>();
         }
 
+        /// <inheritdoc />
         public void Initialize()
         {
             if (_file == null || _fileStream == null ||
@@ -69,24 +70,46 @@ namespace PELoaderLib
             MapDirectoryEntriesToSectionHeaders();
 
             BuildLevelOneCache();
-            BuildLevelTwoCache();
-            foreach (var level2Entry in _levelTwoCache.Values)
-                BuildLevelThreeCache(level2Entry);
+
+            var resourceTypes = (ResourceType[])Enum.GetValues(typeof(ResourceType));
+            foreach (var resourceType in resourceTypes)
+            {
+                BuildLevelTwoCache(resourceType);
+
+                if (_levelTwoCache.ContainsKey(resourceType))
+                {
+                    foreach (var level2Entry in _levelTwoCache[resourceType].Values)
+                        BuildLevelThreeCache(resourceType, level2Entry);
+                }
+            }
 
             Initialized = true;
         }
 
+        /// <inheritdoc />
         public byte[] GetEmbeddedBitmapResourceByID(int intResource, int cultureID = -1)
         {
             if (!Initialized)
                 throw new InvalidOperationException("The PE File must be initialized first");
 
-            var bytes = GetBitmapResourceByID(intResource, cultureID);
+            var bytes = GetResourceByID(ResourceType.Bitmap, intResource, cultureID);
 
             if (bytes == null || bytes.Length == 0)
                 throw new ArgumentException(string.Format("Error loading the resource: could not find the specified resource for ID {0} and Culture {1}", intResource, cultureID));
 
             return PrependBitmapFileHeaderToResourceBytes(bytes);
+        }
+
+        /// <inheritdoc />
+        public byte[] GetResourceByID(ResourceType resourceType, int intResource, int cultureID = -1)
+        {
+            if (!Initialized)
+                throw new InvalidOperationException("The PE File must be initialized first");
+
+            if (!_levelOneCache.ContainsKey(resourceType))
+                return new byte[0];
+
+            return FindMatchingLevel2ResourceEntry(resourceType, intResource, cultureID);
         }
 
         #region Initialize Helpers
@@ -228,74 +251,80 @@ namespace PELoaderLib
             }
         }
 
-        private void BuildLevelTwoCache()
+        private void BuildLevelTwoCache(ResourceType resourceType)
         {
+            if (!_levelOneCache.ContainsKey(resourceType))
+                return;
+
+            _levelTwoCache[resourceType] = new Dictionary<int, ResourceDirectoryEntry>();
+
             var resourceSectionHeader = _sectionMap[DataDirectoryEntry.Resource];
             var resourceSectionFileOffset = resourceSectionHeader.PointerToRawData;
             var resourceDirectoryFileOffset = resourceSectionFileOffset + ResourceDirectory.RESOURCE_DIRECTORY_SIZE;
 
-            var level1Entry = _levelOneCache[ResourceType.Bitmap];
+            var level1Entry = _levelOneCache[resourceType];
             _fileStream.Seek(resourceDirectoryFileOffset + (level1Entry.OffsetToData & 0x7FFFFFFF), SeekOrigin.Begin);
 
             ResourceDirectoryEntry level2Entry;
             do
             {
                 level2Entry = GetResourceDirectoryEntryAtCurrentFilePosition();
-                _levelTwoCache[(int)level2Entry.Name] = level2Entry;
+                _levelTwoCache[resourceType][(int)level2Entry.Name] = level2Entry;
             } while (level2Entry.Name != 0);
         }
 
-        private void BuildLevelThreeCache(ResourceDirectoryEntry level2Entry)
+        private void BuildLevelThreeCache(ResourceType resourceType, ResourceDirectoryEntry level2Entry)
         {
+            if (!_levelTwoCache.ContainsKey(resourceType))
+                return;
+
+            if (!_levelThreeCache.ContainsKey(resourceType))
+                _levelThreeCache[resourceType] = new Dictionary<int, List<(int CultureID, ResourceDirectoryEntry Entry)>>();
+
             var resourceSectionHeader = _sectionMap[DataDirectoryEntry.Resource];
 
             var resourceDirectoryFileOffset = resourceSectionHeader.PointerToRawData + ResourceDirectory.RESOURCE_DIRECTORY_SIZE;
 
             _fileStream.Seek(resourceDirectoryFileOffset + (level2Entry.OffsetToData & 0x7FFFFFFF), SeekOrigin.Begin);
 
+            var l3CacheRef = _levelThreeCache[resourceType];
+
             ResourceDirectoryEntry level3Entry;
             do
             {
                 level3Entry = GetResourceDirectoryEntryAtCurrentFilePosition();
-                if (!_levelThreeCache.ContainsKey((int)level2Entry.Name))
-                    _levelThreeCache.Add((int)level2Entry.Name, new List<(int, ResourceDirectoryEntry)>());
+                if (!l3CacheRef.ContainsKey((int)level2Entry.Name))
+                    l3CacheRef.Add((int)level2Entry.Name, new List<(int, ResourceDirectoryEntry)>());
 
-                _levelThreeCache[(int)level2Entry.Name].Add(((int)level3Entry.Name, level3Entry));
+                l3CacheRef[(int)level2Entry.Name].Add(((int)level3Entry.Name, level3Entry));
             } while (level3Entry.Name != 0);
         }
 
-        private byte[] GetBitmapResourceByID(int resourceID, int cultureID)
+        private byte[] FindMatchingLevel2ResourceEntry(ResourceType resourceType, int resourceID, int cultureID)
         {
-            if (!_levelOneCache.ContainsKey(ResourceType.Bitmap))
+            if (!_levelTwoCache.ContainsKey(resourceType))
                 return new byte[0];
 
-            return FindMatchingLevel2ResourceEntry(resourceID, cultureID);
+            return GetResourceDataForCulture(resourceType, resourceID, cultureID);
         }
 
-        private byte[] FindMatchingLevel2ResourceEntry(int resourceID, int cultureID)
-        {
-            if (!_levelTwoCache.ContainsKey(resourceID))
-                return new byte[0];
-
-            return GetResourceDataForCulture(resourceID, cultureID);
-        }
-
-        private byte[] GetResourceDataForCulture(int resourceID, int cultureID)
+        private byte[] GetResourceDataForCulture(ResourceType resourceType, int resourceID, int cultureID)
         {
             var resourceSectionHeader = _sectionMap[DataDirectoryEntry.Resource];
+            var l3CacheRef = _levelThreeCache[resourceType];
 
-            if (!_levelThreeCache.ContainsKey(resourceID) || (cultureID >= 0 && !_levelThreeCache[resourceID].Any(x => x.CultureID == cultureID)))
+            if (!l3CacheRef.ContainsKey(resourceID) || (cultureID >= 0 && !l3CacheRef[resourceID].Any(x => x.CultureID == cultureID)))
                 return new byte[0];
 
             if (cultureID < 0)
             {
-                cultureID = _levelThreeCache[resourceID].First().CultureID;
+                cultureID = l3CacheRef[resourceID].First().CultureID;
             }
 
-            var resourceDataEntry = GetResourceDataEntryAtOffset(_levelThreeCache[resourceID].First(x => x.CultureID == cultureID).Entry.OffsetToData);
-            var bitmapDataOffset = resourceSectionHeader.PointerToRawData + resourceDataEntry.OffsetToData - resourceSectionHeader.VirtualAddress;
+            var resourceDataEntry = GetResourceDataEntryAtOffset(l3CacheRef[resourceID].First(x => x.CultureID == cultureID).Entry.OffsetToData);
+            var resourceDataOffset = resourceSectionHeader.PointerToRawData + resourceDataEntry.OffsetToData - resourceSectionHeader.VirtualAddress;
 
-            _fileStream.Seek(bitmapDataOffset, SeekOrigin.Begin);
+            _fileStream.Seek(resourceDataOffset, SeekOrigin.Begin);
             var bytes = new byte[resourceDataEntry.Size];
             _fileStream.Read(bytes, 0, bytes.Length);
 
