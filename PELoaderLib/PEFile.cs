@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace PELoaderLib
 {
@@ -15,19 +16,32 @@ namespace PELoaderLib
     //This specification is for a version of Windows from 1993 (Windows NT 3.1).
     //Doesn't seem like much has changed since then though, since everything seems to work!
 
+    /// <inheritdoc />
     public class PEFile : IPEFile
     {
         private const int SIZE_OF_NT_SIGNATURE = 4;
 
+        /// <inheritdoc />
         public string FileName { get; private set; }
+
+        /// <inheritdoc />
         public bool Initialized { get; private set; }
+
+        /// <inheritdoc />
         public ImageDOSHeader DOSHeader { get; private set; }
+
+        /// <inheritdoc />
         public ImageHeaderType HeaderType { get; private set; }
+
+        /// <inheritdoc />
         public ImageFileHeader ImageHeader { get; private set; }
+
+        /// <inheritdoc />
         public OptionalFileHeader OptionalHeader { get; private set; }
 
         private MemoryMappedFile _file;
-        private MemoryMappedViewStream _fileStream;
+        private MemoryMappedViewAccessor _fileAccessor;
+
         private readonly List<ImageSectionHeader> _sectionHeaders;
         private readonly Dictionary<DataDirectoryEntry, ImageSectionHeader> _sectionMap;
 
@@ -35,6 +49,10 @@ namespace PELoaderLib
         private readonly Dictionary<ResourceType, Dictionary<int, ResourceDirectoryEntry>> _levelTwoCache;
         private readonly Dictionary<ResourceType, Dictionary<int, List<(int CultureID, ResourceDirectoryEntry Entry)>>> _levelThreeCache;
 
+        /// <summary>
+        /// Map a PE file to memory with the specified filename
+        /// </summary>
+        /// <param name="filename">The filename to map</param>
         public PEFile(string filename)
         {
             FileName = filename;
@@ -49,12 +67,10 @@ namespace PELoaderLib
         /// <inheritdoc />
         public void Initialize()
         {
-            if (_file == null || _fileStream == null ||
-                !_fileStream.CanRead || !_fileStream.CanSeek)
+            if (_file == null || _fileAccessor == null || !_fileAccessor.CanRead)
                 throw new InvalidOperationException();
 
             Initialized = false;
-            _fileStream.Seek(0, SeekOrigin.Begin);
             _sectionHeaders.Clear();
             _sectionMap.Clear();
 
@@ -87,7 +103,7 @@ namespace PELoaderLib
         }
 
         /// <inheritdoc />
-        public byte[] GetEmbeddedBitmapResourceByID(int intResource, int cultureID = -1)
+        public ReadOnlyMemory<byte> GetEmbeddedBitmapResourceByID(int intResource, int cultureID = -1)
         {
             if (!Initialized)
                 throw new InvalidOperationException("The PE File must be initialized first");
@@ -101,7 +117,7 @@ namespace PELoaderLib
         }
 
         /// <inheritdoc />
-        public byte[] GetResourceByID(ResourceType resourceType, int intResource, int cultureID = -1)
+        public ReadOnlySpan<byte> GetResourceByID(ResourceType resourceType, int intResource, int cultureID = -1)
         {
             if (!Initialized)
                 throw new InvalidOperationException("The PE File must be initialized first");
@@ -116,26 +132,26 @@ namespace PELoaderLib
 
         private void CreateFileStreams()
         {
-            if (_file != null || _fileStream != null)
+            if (_file != null || _fileAccessor != null)
                 throw new InvalidOperationException();
 
             _file = MemoryMappedFile.CreateFromFile(FileName);
-            _fileStream = _file.CreateViewStream();
+            _fileAccessor = _file.CreateViewAccessor();
         }
 
         private ImageDOSHeader GetImageDOSHeader()
         {
             var headerArray = new byte[ImageDOSHeader.DOS_HEADER_LENGTH];
-            _fileStream.Read(headerArray, 0, headerArray.Length);
+            _fileAccessor.ReadArray(0, headerArray, 0, headerArray.Length);
             return ImageDOSHeader.CreateFromBytes(headerArray);
         }
 
         private ImageHeaderType GetHeaderType()
         {
-            SetStreamToDOSHeaderOffset();
+            var offset = DOSHeader.e_lfanew;
 
-            var typeArray = new byte[sizeof (UInt32)];
-            _fileStream.Read(typeArray, 0, typeArray.Length);
+            var typeArray = new byte[sizeof(uint)];
+            _fileAccessor.ReadArray(offset, typeArray, 0, typeArray.Length);
 
             var type = BitConverter.ToInt32(typeArray, 0);
             var lowWordOfType = (ushort) (type & 0x0000FFFF);
@@ -152,31 +168,33 @@ namespace PELoaderLib
 
         private ImageFileHeader GetImageFileHeader()
         {
-            SetStreamToStartOfImageFileHeader();
+            var offset = DOSHeader.e_lfanew + SIZE_OF_NT_SIGNATURE;
 
             var headerArray = new byte[ImageFileHeader.IMAGE_FILE_HEADER_SIZE];
-            _fileStream.Read(headerArray, 0, headerArray.Length);
+            _fileAccessor.ReadArray(offset, headerArray, 0, headerArray.Length);
             return ImageFileHeader.CreateFromBytes(headerArray);
         }
 
         private OptionalFileHeader GetOptionalFileHeader()
         {
-            SetStreamToStartOfOptionalFileHeader();
+            var offset = DOSHeader.e_lfanew + SIZE_OF_NT_SIGNATURE + ImageFileHeader.IMAGE_FILE_HEADER_SIZE;
 
             var headerArray = new byte[OptionalFileHeader.OPTIONAL_FILE_HEADER_SIZE];
-            _fileStream.Read(headerArray, 0, headerArray.Length);
+            _fileAccessor.ReadArray(offset, headerArray, 0, headerArray.Length);
             return OptionalFileHeader.CreateFromBytes(headerArray);
         }
 
         private void LoadSectionHeaders()
         {
-            SetStreamToStartOfSectionHeaders();
+            var offset = DOSHeader.e_lfanew + SIZE_OF_NT_SIGNATURE + ImageFileHeader.IMAGE_FILE_HEADER_SIZE + OptionalFileHeader.OPTIONAL_FILE_HEADER_SIZE;
 
             for (int i = 0; i < ImageHeader.NumberOfSections; ++i)
             {
                 var sectionHeaderArray = new byte[ImageSectionHeader.SECTION_HEADER_SIZE];
-                _fileStream.Read(sectionHeaderArray, 0, sectionHeaderArray.Length);
+                _fileAccessor.ReadArray(offset, sectionHeaderArray, 0, sectionHeaderArray.Length);
                 _sectionHeaders.Add(ImageSectionHeader.CreateFromBytes(sectionHeaderArray));
+
+                offset += ImageSectionHeader.SECTION_HEADER_SIZE;
             }
         }
 
@@ -215,18 +233,22 @@ namespace PELoaderLib
 
         #region Resource Helpers
 
-        private byte[] PrependBitmapFileHeaderToResourceBytes(byte[] resourceBytes)
+        private unsafe Memory<byte> PrependBitmapFileHeaderToResourceBytes(ReadOnlySpan<byte> resourceBytes)
         {
+            var headerSize = BitConverter.ToInt32(resourceBytes.Slice(0, 4).ToArray(), 0);
+            var bitmapHeaderBytes = resourceBytes.Slice(0, headerSize).ToArray();
+
             var totalFileSize = (uint)(resourceBytes.Length + BitmapFileHeader.BMP_FILE_HEADER_SIZE);
+            var bitmapFileHeader = new BitmapFileHeader(totalFileSize, bitmapHeaderBytes).ToByteArray();
+
             var retArray = new byte[totalFileSize];
-
-            var headerSize = BitConverter.ToInt32(resourceBytes, 0);
-            var bitmapHeaderBytes = resourceBytes.Take(headerSize).ToArray();
-
-            var bitmapFileHeader = new BitmapFileHeader(totalFileSize, bitmapHeaderBytes);
-            bitmapFileHeader.ToByteArray().CopyTo(retArray, 0);
-
-            resourceBytes.CopyTo(retArray, BitmapFileHeader.BMP_FILE_HEADER_SIZE);
+            fixed (byte* headerSource = bitmapFileHeader)
+            fixed (byte* source = resourceBytes)
+            fixed (byte* target = retArray)
+            {
+                Unsafe.CopyBlock(target, headerSource, BitmapFileHeader.BMP_FILE_HEADER_SIZE);
+                Unsafe.CopyBlock(target + BitmapFileHeader.BMP_FILE_HEADER_SIZE, source, (uint)resourceBytes.Length);
+            }
 
             return retArray;
         }
@@ -235,19 +257,23 @@ namespace PELoaderLib
         {
             var resourceSectionHeader = _sectionMap[DataDirectoryEntry.Resource];
 
-            SetStreamToStartOfResourceSection(resourceSectionHeader);
-            var resourceTableHeader = GetResourceDirectoryHeaderTable();
+            var offset = resourceSectionHeader.PointerToRawData;
+            var resourceTableHeader = GetResourceDirectoryHeaderTable(offset);
+            offset += ResourceDirectory.RESOURCE_DIRECTORY_SIZE;
 
             //skip over named entries in resource section (since this is explicitly by resource ID)
             for (int i = 0; i < resourceTableHeader.NumberOfNamedEntries; ++i)
             {
-                GetResourceDirectoryEntryAtCurrentFilePosition();
+                GetResourceDirectoryEntryAtOffset(offset);
+                offset += ResourceDirectoryEntry.ENTRY_SIZE;
             }
 
             for (int i = 0; i < resourceTableHeader.NumberOfIdEntries; ++i)
             {
-                var level1Entry = GetResourceDirectoryEntryAtCurrentFilePosition();
+                var level1Entry = GetResourceDirectoryEntryAtOffset(offset);
                 _levelOneCache[level1Entry.NameAsResourceType] = level1Entry;
+
+                offset += ResourceDirectoryEntry.ENTRY_SIZE;
             }
         }
 
@@ -263,13 +289,14 @@ namespace PELoaderLib
             var resourceDirectoryFileOffset = resourceSectionFileOffset + ResourceDirectory.RESOURCE_DIRECTORY_SIZE;
 
             var level1Entry = _levelOneCache[resourceType];
-            _fileStream.Seek(resourceDirectoryFileOffset + (level1Entry.OffsetToData & 0x7FFFFFFF), SeekOrigin.Begin);
+            var offset = resourceDirectoryFileOffset + (level1Entry.OffsetToData & 0x7FFFFFFF);
 
             ResourceDirectoryEntry level2Entry;
             do
             {
-                level2Entry = GetResourceDirectoryEntryAtCurrentFilePosition();
+                level2Entry = GetResourceDirectoryEntryAtOffset(offset);
                 _levelTwoCache[resourceType][(int)level2Entry.Name] = level2Entry;
+                offset += ResourceDirectoryEntry.ENTRY_SIZE;
             } while (level2Entry.Name != 0);
         }
 
@@ -285,22 +312,23 @@ namespace PELoaderLib
 
             var resourceDirectoryFileOffset = resourceSectionHeader.PointerToRawData + ResourceDirectory.RESOURCE_DIRECTORY_SIZE;
 
-            _fileStream.Seek(resourceDirectoryFileOffset + (level2Entry.OffsetToData & 0x7FFFFFFF), SeekOrigin.Begin);
+            var offset = resourceDirectoryFileOffset + (level2Entry.OffsetToData & 0x7FFFFFFF);
 
             var l3CacheRef = _levelThreeCache[resourceType];
 
             ResourceDirectoryEntry level3Entry;
             do
             {
-                level3Entry = GetResourceDirectoryEntryAtCurrentFilePosition();
+                level3Entry = GetResourceDirectoryEntryAtOffset(offset);
                 if (!l3CacheRef.ContainsKey((int)level2Entry.Name))
                     l3CacheRef.Add((int)level2Entry.Name, new List<(int, ResourceDirectoryEntry)>());
 
                 l3CacheRef[(int)level2Entry.Name].Add(((int)level3Entry.Name, level3Entry));
+                offset += ResourceDirectoryEntry.ENTRY_SIZE;
             } while (level3Entry.Name != 0);
         }
 
-        private byte[] FindMatchingLevel2ResourceEntry(ResourceType resourceType, int resourceID, int cultureID)
+        private ReadOnlySpan<byte> FindMatchingLevel2ResourceEntry(ResourceType resourceType, int resourceID, int cultureID)
         {
             if (!_levelTwoCache.ContainsKey(resourceType))
                 return new byte[0];
@@ -308,7 +336,7 @@ namespace PELoaderLib
             return GetResourceDataForCulture(resourceType, resourceID, cultureID);
         }
 
-        private byte[] GetResourceDataForCulture(ResourceType resourceType, int resourceID, int cultureID)
+        private ReadOnlySpan<byte> GetResourceDataForCulture(ResourceType resourceType, int resourceID, int cultureID)
         {
             var resourceSectionHeader = _sectionMap[DataDirectoryEntry.Resource];
             var l3CacheRef = _levelThreeCache[resourceType];
@@ -324,25 +352,29 @@ namespace PELoaderLib
             var resourceDataEntry = GetResourceDataEntryAtOffset(l3CacheRef[resourceID].First(x => x.CultureID == cultureID).Entry.OffsetToData);
             var resourceDataOffset = resourceSectionHeader.PointerToRawData + resourceDataEntry.OffsetToData - resourceSectionHeader.VirtualAddress;
 
-            _fileStream.Seek(resourceDataOffset, SeekOrigin.Begin);
-            var bytes = new byte[resourceDataEntry.Size];
-            _fileStream.Read(bytes, 0, bytes.Length);
-
-            return bytes;
+            unsafe
+            {
+                byte* filePointer = null;
+                _fileAccessor.SafeMemoryMappedViewHandle.AcquirePointer(ref filePointer);
+                return new ReadOnlySpan<byte>((void*)((ulong)filePointer + resourceDataOffset), (int)resourceDataEntry.Size);
+            }
         }
 
-        private ResourceDirectory GetResourceDirectoryHeaderTable()
+        private ResourceDirectory GetResourceDirectoryHeaderTable(uint offset)
         {
             var resourceInfo = new byte[ResourceDirectory.RESOURCE_DIRECTORY_SIZE];
-            _fileStream.Read(resourceInfo, 0, resourceInfo.Length);
+            _fileAccessor.ReadArray(offset, resourceInfo, 0, resourceInfo.Length);
             var resourceTableHeader = ResourceDirectory.CreateFromBytes(resourceInfo);
             return resourceTableHeader;
         }
 
-        private ResourceDirectoryEntry GetResourceDirectoryEntryAtCurrentFilePosition()
+        private ResourceDirectoryEntry GetResourceDirectoryEntryAtOffset(uint offset)
         {
+            if (offset > _fileAccessor.SafeMemoryMappedViewHandle.ByteLength)
+                return new ResourceDirectoryEntry(0, 0);
+
             var directoryEntryArray = new byte[ResourceDirectoryEntry.ENTRY_SIZE];
-            _fileStream.Read(directoryEntryArray, 0, directoryEntryArray.Length);
+            _fileAccessor.ReadArray(offset, directoryEntryArray, 0, directoryEntryArray.Length);
             return new ResourceDirectoryEntry(BitConverter.ToUInt32(directoryEntryArray, 0),
                                               BitConverter.ToUInt32(directoryEntryArray, 4));
         }
@@ -350,70 +382,41 @@ namespace PELoaderLib
         private ResourceDataEntry GetResourceDataEntryAtOffset(uint offset)
         {
             var resourceSectionFileOffset = _sectionMap[DataDirectoryEntry.Resource].PointerToRawData;
-            _fileStream.Seek(resourceSectionFileOffset + offset, SeekOrigin.Begin);
 
             var dataEntryArray = new byte[ResourceDataEntry.ENTRY_SIZE];
-            _fileStream.Read(dataEntryArray, 0, dataEntryArray.Length);
+            _fileAccessor.ReadArray(resourceSectionFileOffset + offset, dataEntryArray, 0, dataEntryArray.Length);
             return ResourceDataEntry.CreateFromBytes(dataEntryArray);
-        }
-
-        #endregion
-
-        #region Stream Manipulation
-
-        private void SetStreamToDOSHeaderOffset()
-        {
-            _fileStream.Seek(DOSHeader.e_lfanew, SeekOrigin.Begin);
-        }
-
-        private void SetStreamToStartOfImageFileHeader()
-        {
-            SetStreamToDOSHeaderOffset();
-            _fileStream.Seek(SIZE_OF_NT_SIGNATURE, SeekOrigin.Current);
-        }
-
-        private void SetStreamToStartOfOptionalFileHeader()
-        {
-            SetStreamToStartOfImageFileHeader();
-            _fileStream.Seek(ImageFileHeader.IMAGE_FILE_HEADER_SIZE, SeekOrigin.Current);
-        }
-
-        private void SetStreamToStartOfSectionHeaders()
-        {
-            SetStreamToStartOfOptionalFileHeader();
-            _fileStream.Seek(OptionalFileHeader.OPTIONAL_FILE_HEADER_SIZE, SeekOrigin.Current);
-        }
-
-        private void SetStreamToStartOfResourceSection(ImageSectionHeader resourceHeader)
-        {
-            _fileStream.Seek((int)resourceHeader.PointerToRawData, SeekOrigin.Begin);
         }
 
         #endregion
 
         #region IDisposable
 
+        /// <inheritdoc />
         ~PEFile()
         {
             Dispose(false);
         }
 
+        /// <inheritdoc />
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
         }
 
-        private void Dispose(bool disposing)
+        /// <summary>
+        /// Free unmanaged resources associated with this object
+        /// </summary>
+        /// <param name="disposing">True if disposing, false if finalizing</param>
+        protected virtual void Dispose(bool disposing)
         {
             if (disposing)
             {
-                if (_fileStream != null)
-                    _fileStream.Dispose();
-                _fileStream = null;
+                _fileAccessor?.Dispose();
+                _fileAccessor= null;
 
-                if (_file != null)
-                    _file.Dispose();
+                _file?.Dispose();
                 _file = null;
             }
         }

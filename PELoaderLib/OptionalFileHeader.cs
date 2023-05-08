@@ -5,11 +5,10 @@
 using System;
 using System.Linq;
 
-// ReSharper disable MemberCanBePrivate.Global
-// ReSharper disable UnusedAutoPropertyAccessor.Global
-
 namespace PELoaderLib
 {
+    #pragma warning disable CS1591
+
     public struct OptionalFileHeader
     {
         public const int OPTIONAL_FILE_HEADER_SIZE = 224;

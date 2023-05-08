@@ -4,6 +4,11 @@
 
 namespace PELoaderLib
 {
+    #pragma warning disable CS1591
+
+    /// <summary>
+    /// Represents a PE resource type
+    /// </summary>
     public enum ResourceType : uint
     {
         Cursor = 1,

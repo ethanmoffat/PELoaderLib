@@ -12,7 +12,8 @@ Much of the implementation is based on the [description of the file format here]
 
 Operations may throw a number of exceptions. For specific exception types, consult the source code.
 
-```C#
+### v1.5 and earlier
+```csharp
 
 using (IPEFile file = new PEFile("somefile.dll"))
 {
@@ -25,11 +26,40 @@ using (IPEFile file = new PEFile("somefile.dll"))
         throw new Exception("Failed to load resource!");
     }
 
-    using(var ms = new MemoryStream(fileBytes))
-    using(var image = (Bitmap)Image.FromStream(ms))
+    using var ms = new MemoryStream(fileBytes);
+    using var image = (Bitmap)Image.FromStream(ms);
+    //do something with image
+}
+
+```
+
+### v1.6 and later
+```csharp
+
+// The following Nuget package is required for high performance conversion of Memory<byte> to Stream
+// using CommunityToolkit.HighPerformance;
+
+using (IPEFile file = new PEFile("somefile.dll"))
+{
+    file.Initialize();
+
+    var bitmapData = file.GetEmbeddedBitmapResourceByID(123);
+
+    if (fileBytes.Length == 0)
     {
-        //do something with image
+        throw new Exception("Failed to load resource!");
     }
+
+    // if using CommunityToolkit.HighPerformance:
+    using var ms = fileBytes.AsStream();
+    // otherwise:
+    // using var ms = new MemoryStream(fileBytes.ToArray());
+    using var image = (Bitmap)Image.FromStream(ms);
+    //do something with image
+
+    var resourceData = file.GetResourceByID(ResourceType.RCData, 123);
+    var dataAsString = Encoding.Unicode.GetString(rawMetadata);
+    // do something with string RCData
 }
 
 ```
