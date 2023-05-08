@@ -16,6 +16,7 @@
         <AssemblyVersion>1.6.0</AssemblyVersion>
         <PackageVersion>1.6.0</PackageVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
     </PropertyGroup>
     <ItemGroup>
       <PackageReference Include="System.Memory" Version="4.5.5" />

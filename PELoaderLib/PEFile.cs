@@ -16,15 +16,27 @@ namespace PELoaderLib
     //This specification is for a version of Windows from 1993 (Windows NT 3.1).
     //Doesn't seem like much has changed since then though, since everything seems to work!
 
+    /// <inheritdoc />
     public class PEFile : IPEFile
     {
         private const int SIZE_OF_NT_SIGNATURE = 4;
 
+        /// <inheritdoc />
         public string FileName { get; private set; }
+
+        /// <inheritdoc />
         public bool Initialized { get; private set; }
+
+        /// <inheritdoc />
         public ImageDOSHeader DOSHeader { get; private set; }
+
+        /// <inheritdoc />
         public ImageHeaderType HeaderType { get; private set; }
+
+        /// <inheritdoc />
         public ImageFileHeader ImageHeader { get; private set; }
+
+        /// <inheritdoc />
         public OptionalFileHeader OptionalHeader { get; private set; }
 
         private MemoryMappedFile _file;
@@ -37,6 +49,10 @@ namespace PELoaderLib
         private readonly Dictionary<ResourceType, Dictionary<int, ResourceDirectoryEntry>> _levelTwoCache;
         private readonly Dictionary<ResourceType, Dictionary<int, List<(int CultureID, ResourceDirectoryEntry Entry)>>> _levelThreeCache;
 
+        /// <summary>
+        /// Map a PE file to memory with the specified filename
+        /// </summary>
+        /// <param name="filename">The filename to map</param>
         public PEFile(string filename)
         {
             FileName = filename;
@@ -376,18 +392,24 @@ namespace PELoaderLib
 
         #region IDisposable
 
+        /// <inheritdoc />
         ~PEFile()
         {
             Dispose(false);
         }
 
+        /// <inheritdoc />
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
         }
 
-        private void Dispose(bool disposing)
+        /// <summary>
+        /// Free unmanaged resources associated with this object
+        /// </summary>
+        /// <param name="disposing">True if disposing, false if finalizing</param>
+        protected virtual void Dispose(bool disposing)
         {
             if (disposing)
             {

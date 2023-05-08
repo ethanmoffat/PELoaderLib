@@ -4,6 +4,8 @@
 
 namespace PELoaderLib
 {
+    #pragma warning disable CS1591
+
     public struct ImageDataDirectory
     {
         public const int SIZE_OF_IMAGE_DATA_DIRECTORY = 8;

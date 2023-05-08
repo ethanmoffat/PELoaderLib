@@ -3,11 +3,11 @@
 // For additional details, see the LICENSE file
 
 using System;
-// ReSharper disable MemberCanBePrivate.Global
-// ReSharper disable UnusedAutoPropertyAccessor.Global
 
 namespace PELoaderLib
 {
+    #pragma warning disable CS1591
+
     public struct ImageFileHeader
     {
         public const int IMAGE_FILE_HEADER_SIZE = 20;

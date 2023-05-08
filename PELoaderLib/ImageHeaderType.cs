@@ -4,6 +4,8 @@
 
 namespace PELoaderLib
 {
+    #pragma warning disable CS1591
+
     //#define IMAGE_DOS_SIGNATURE             0x5A4D      // MZ
     //#define IMAGE_OS2_SIGNATURE             0x454E      // NE
     //#define IMAGE_OS2_SIGNATURE_LE          0x454C      // LE

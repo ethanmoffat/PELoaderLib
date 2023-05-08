@@ -9,6 +9,8 @@ using System;
 
 namespace PELoaderLib
 {
+    #pragma warning disable CS1591
+
     /// <summary>
     /// Structure that mimics IMAGE_DOS_HEADER (see winnt.h)
     /// </summary>
