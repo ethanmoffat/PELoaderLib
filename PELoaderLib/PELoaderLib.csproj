@@ -15,8 +15,10 @@
         <Version>1.5.0</Version>
         <AssemblyVersion>1.5.0</AssemblyVersion>
         <PackageVersion>1.5.0</PackageVersion>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
     <ItemGroup>
+      <PackageReference Include="System.Memory" Version="4.5.5" />
       <PackageReference Include="System.ValueTuple" Version="4.5.0" />
     </ItemGroup>
 </Project>

@@ -26,7 +26,7 @@ namespace PELoaderLib
         /// <param name="intResource">The integer ID of the resource to get</param>
         /// <param name="cultureID">The culture ID of the resource to get, or -1 to get the first culture available</param>
         /// <returns>Byte array of resource data including a prepended bitmap file header</returns>
-        byte[] GetEmbeddedBitmapResourceByID(int intResource, int cultureID = -1);
+        ReadOnlyMemory<byte> GetEmbeddedBitmapResourceByID(int intResource, int cultureID = -1);
 
         /// <summary>
         /// Get an embedded resource from this PE file
@@ -35,6 +35,6 @@ namespace PELoaderLib
         /// <param name="intResource">The integer ID of the resource to get</param>
         /// <param name="cultureID">The culture ID of the resource to get, or -1 to get the first culture available</param>
         /// <returns>Byte array of resource data</returns>
-        byte[] GetResourceByID(ResourceType resourceType, int intResource, int cultureID = -1);
+        ReadOnlySpan<byte> GetResourceByID(ResourceType resourceType, int intResource, int cultureID = -1);
     }
 }
