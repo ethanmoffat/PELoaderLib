@@ -354,6 +354,9 @@ namespace PELoaderLib
 
         private ResourceDirectoryEntry GetResourceDirectoryEntryAtOffset(uint offset)
         {
+            if (offset > _fileAccessor.SafeMemoryMappedViewHandle.ByteLength)
+                return new ResourceDirectoryEntry(0, 0);
+
             var directoryEntryArray = new byte[ResourceDirectoryEntry.ENTRY_SIZE];
             _fileAccessor.ReadArray(offset, directoryEntryArray, 0, directoryEntryArray.Length);
             return new ResourceDirectoryEntry(BitConverter.ToUInt32(directoryEntryArray, 0),
@@ -363,7 +366,6 @@ namespace PELoaderLib
         private ResourceDataEntry GetResourceDataEntryAtOffset(uint offset)
         {
             var resourceSectionFileOffset = _sectionMap[DataDirectoryEntry.Resource].PointerToRawData;
-            //_fileStream.Seek(resourceSectionFileOffset + offset, SeekOrigin.Begin);
 
             var dataEntryArray = new byte[ResourceDataEntry.ENTRY_SIZE];
             _fileAccessor.ReadArray(resourceSectionFileOffset + offset, dataEntryArray, 0, dataEntryArray.Length);
