@@ -2,7 +2,7 @@
 
 PELoaderLib is a library for loading compiled resources out of windows portable executable files.
 
-Much of the implementation is based on the [description of the file format here](http://www.csn.ul.ie/~caolan/publink/winresdump/winresdump/doc/pefile.html).
+Much of the implementation is based on the [description of the file format here](https://web.archive.org/web/20220518180743/http://www.csn.ul.ie/~caolan/publink/winresdump/winresdump/doc/pefile.html).
 
 ## Build Status
 
