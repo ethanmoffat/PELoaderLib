@@ -53,10 +53,16 @@ namespace PELoaderLib
         /// Map a PE file to memory with the specified filename
         /// </summary>
         /// <param name="filename">The filename to map</param>
-        public PEFile(string filename)
+        /// <param name="shared">True to enable opening the file in multiple processes; false otherwise</param>
+        /// <remarks>
+        /// A 'shared' file will create a memory map of the file with a map name of {FileName}-map. A process using a shared map
+        /// will attempt to open the shared map first and fall back to opening the persisted file if the share does not exist.
+        /// <para>A non-shared file will be limited to a single process; additional processes attempting to access the file will throw.</para>
+        /// </remarks>
+        public PEFile(string filename, bool shared = false)
         {
             FileName = filename;
-            CreateFileStreams();
+            CreateFileStreams(shared);
             _sectionHeaders = new List<ImageSectionHeader>();
             _sectionMap = new Dictionary<DataDirectoryEntry, ImageSectionHeader>();
             _levelOneCache = new Dictionary<ResourceType, ResourceDirectoryEntry>();
@@ -130,12 +136,28 @@ namespace PELoaderLib
 
         #region Initialize Helpers
 
-        private void CreateFileStreams()
+        private void CreateFileStreams(bool shared)
         {
             if (_file != null || _fileAccessor != null)
                 throw new InvalidOperationException();
 
-            _file = MemoryMappedFile.CreateFromFile(FileName);
+            if (shared)
+            {
+                var mapName = $"{Path.GetFileNameWithoutExtension(FileName)}-map";
+                try
+                {
+                    _file = MemoryMappedFile.OpenExisting(mapName);
+                }
+                catch (FileNotFoundException)
+                {
+                    _file = MemoryMappedFile.CreateFromFile(FileName, FileMode.Open, mapName);
+                }
+            }
+            else
+            {
+                _file = MemoryMappedFile.CreateFromFile(FileName);
+            }
+
             _fileAccessor = _file.CreateViewAccessor();
         }
 
