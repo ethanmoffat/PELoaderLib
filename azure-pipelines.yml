@@ -1,4 +1,4 @@
-name: 1.6.0.$(rev:rrr)
+name: 1.7.0.$(rev:rrr)
 
 trigger:
 - master
@@ -19,7 +19,7 @@ variables:
 steps:
 - task: UseDotNet@2
   inputs:
-    version: 6.0.x
+    version: 8.0.x
 - task: DotNetCoreCLI@2
   inputs:
     command: 'restore'
